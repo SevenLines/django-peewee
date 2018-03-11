@@ -21,5 +21,5 @@ import test_django_peewee.views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    url('', test_django_peewee.views.index),
+    url('^$', test_django_peewee.views.index),
 ]
