@@ -65,7 +65,8 @@ class TestModelBase(TestCase):
         user.user_permissions.add(*Permission.objects.all())
 
         user_pw = User.pw.select().execute()[0]
-        print(user_pw.user_permissions.select().execute())
+        for permission in user_pw.user_permissions.execute():
+            print(permission.name)
         print(user_pw)
 
     def test_custom_table_name(self):

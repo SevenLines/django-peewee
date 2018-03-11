@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.apps import AppConfig
 import django.apps
 import peewee
@@ -18,12 +20,10 @@ DATA_TYPES = {
     'DecimalField': lambda *args, **kwargs: peewee.DecimalField(*args, **kwargs),
     # 'DurationField': '',
     'EmailField': peewee.CharField,
-
     'FileField': peewee.CharField,
     'FilePathField': peewee.CharField,
     'FloatField': peewee.FloatField,
     'ForeignKey': peewee.DeferredForeignKey,  # для избежания циклических зависимостей
-
     'GenericIPAddressField': peewee.CharField,
     'IPAddressField': peewee.IPField,
     'ImageField': peewee.CharField,
@@ -31,7 +31,7 @@ DATA_TYPES = {
     'ManyToManyField': ManyToManyField,
     'NullBooleanField': lambda *args, **kwargs: peewee.BooleanField(null=True, *args, **kwargs),
     'OneToOneField': peewee.DeferredForeignKey,
-    # 'OrderWrt': '',
+    'OrderWrt': peewee.IntegerField,
     'PositiveIntegerField': peewee.IntegerField,
     'PositiveSmallIntegerField': peewee.SmallIntegerField,
     'SlugField': peewee.CharField,
@@ -66,14 +66,7 @@ class DatabaseProxy(object):
 
 
 class ProxyModel(peewee.Model):
-    @classmethod
-    def select(cls, *fields):
-        query = super().select(*fields)
-        query._database = DatabaseProxy(cls._meta.peewee_database_alias)
-        return query
-
-
-# class ProxyManyToManyQuery(ManyToManyQuery):
+    pass
 
 
 class DjangoPeeweeConfig(AppConfig):
@@ -121,6 +114,15 @@ class DjangoPeeweeConfig(AppConfig):
 
         return class_inner
 
+    def patch_peewee_base_query(self):
+        self.original_execute = peewee.BaseQuery.execute
+
+        def patched_execute(query, database=None, *args, **kwargs):
+            database = database or 'default'
+            return self.original_execute(query, DatabaseProxy(database))
+
+        peewee.BaseQuery.execute = patched_execute
+
     def ready(self):
         models = [model for model in django.apps.apps.get_models() if not model._meta.proxy]
 
@@ -148,5 +150,4 @@ class DjangoPeeweeConfig(AppConfig):
                     through_model=through_model
                 ))
 
-
-
+        self.patch_peewee_base_query()
