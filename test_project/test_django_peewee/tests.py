@@ -16,27 +16,27 @@ class TestPeeWeeModels(TestCase):
             big_integer_field=123,
             boolean_field=True,
             binary_field=b'',
-            char_field='',
+            char_field='char_text',
             date_field=date(2018, 1, 2),
             date_time_field=datetime(2018, 1, 1, 11, 11),
             decimal_field=Decimal("123.5555"),
-            email_field='',
-            file_field='',
-            file_path_field='',
+            email_field='email@email.com',
+            file_field='file',
+            file_path_field='file_path',
             float_field=123.123,
             foreign_key=other,
             generic_ipaddress_field='255.255.1.1',
-            image_field='',
+            image_field='image',
             integer_field=12,
             null_boolean_field=True,
             positive_integer_field=12,
             positive_small_integer_field=12,
-            slug_field='',
+            slug_field='slug',
             small_integer_field=-12,
             text_field='text_field_value',
             text_field_with_custom_column='text_field_with_custom_column_value',
             time_field=time(1, 1, 50),
-            urlfield='',
+            urlfield='https://github.com/SevenLines/django-peewee',
             uuidfield=uuid.uuid4(),
         )
 
@@ -50,6 +50,7 @@ class TestPeeWeeModels(TestCase):
             elif key == 'foreign_key':
                 self.assertEqual(value.id, item.foreign_key_id)
                 self.assertEqual(value.id, item.foreign_key.id)
+                self.assertEqual(other.text, item.foreign_key.text)
             else:
                 self.assertEqual(value, getattr(item, key), "wrong {}".format(key))
 
@@ -75,8 +76,6 @@ class TestPeeWeeModels(TestCase):
             test_model=test_model,
             other_test_model=other_test_model
         )
-
-        tt = TestThroughModel.objects.first()
 
         through_info = TestModel.pw[test_model.id].others_models.first()
         self.assertEqual("test_text", through_info.text)

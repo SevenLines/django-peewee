@@ -104,6 +104,7 @@ class DjangoPeeweeConfig(AppConfig):
         class_inner = {}
 
         for field in model._meta.fields:
+            # build peewee fields based on django fields
             if field.__class__.__name__ in DATA_TYPES:
                 data_type = DATA_TYPES[field.__class__.__name__]
                 args = []
@@ -118,13 +119,14 @@ class DjangoPeeweeConfig(AppConfig):
                         data_type = peewee.ForeignKeyField
                 elif isinstance(field, DecimalField):
                     kwargs['decimal_places'] = field.decimal_places
-                    kwargs['max_digits'] = field.max_digits
 
                 class_inner[field.name] = data_type(*args, **kwargs)
-            class_inner['Meta'] = type('Meta', (object,), {
-                "table_name": model._meta.db_table,
-                "peewee_database_alias": getattr(model._meta, 'peewee_database_alias', 'default'),
-            })
+
+        # add meta class
+        class_inner['Meta'] = type('Meta', (object,), {
+            "table_name": model._meta.db_table,
+            "peewee_database_alias": getattr(model._meta, 'peewee_database_alias', 'default'),
+        })
 
         return class_inner
 
@@ -145,16 +147,18 @@ class DjangoPeeweeConfig(AppConfig):
     def ready(self):
         models = [model for model in django.apps.apps.get_models() if not model._meta.proxy]
 
-        # resolve simple fields
+        # resolve simple fields, bind "pw" field to django model
         for model in models:
+            inner = self.get_peewee_class_inner(model)
+            inner['django_model'] = model
             model.pw = type(
                 self.get_klass_name(model),
                 (ProxyModel,),
-                self.get_peewee_class_inner(model)
+                inner
             )
             self.PEEWEE_MODELS_CACHE[model] = model.pw
 
-        # resolve deferred foreign keys
+        # resolve deferred foreign keys, we use DeferredForeignKey, to avoid cycle foreign keys
         for model in models:
             DeferredForeignKey.resolve(model.pw)
 

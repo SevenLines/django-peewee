@@ -16,7 +16,7 @@ class TestModel(models.Model):
     boolean_field = models.BooleanField(default=False)
     binary_field = models.BinaryField(null=True)
     char_field = models.CharField(null=True, max_length=50)
-    # comma_separated_integer_field = models.CommaSeparatedIntegerField(null=True) # depricated
+    # comma_separated_integer_field = models.CommaSeparatedIntegerField(null=True) # deprecated
     date_field = models.DateField(null=True)
     date_time_field = models.DateTimeField(null=True)
     decimal_field = models.DecimalField(null=True, decimal_places=5, max_digits=10)
