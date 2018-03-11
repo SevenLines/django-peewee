@@ -16,7 +16,7 @@ class TestModel(models.Model):
     boolean_field = models.BooleanField(default=False)
     binary_field = models.BinaryField(null=True)
     char_field = models.CharField(null=True, max_length=50)
-    # comma_separated_integer_field = models.CommaSeparatedIntegerField(null=True)
+    # comma_separated_integer_field = models.CommaSeparatedIntegerField(null=True) # depricated
     date_field = models.DateField(null=True)
     date_time_field = models.DateTimeField(null=True)
     decimal_field = models.DecimalField(null=True, decimal_places=5, max_digits=10)
@@ -38,6 +38,14 @@ class TestModel(models.Model):
     time_field = models.TimeField(null=True)
     urlfield = models.URLField(null=True)
     uuidfield = models.UUIDField(null=True)
+
+    others_models = models.ManyToManyField(OtherTestModel, through='TestThroughModel', related_name="test_models")
+
+
+class TestThroughModel(models.Model):
+    value = models.CharField(max_length=100, null=True)
+    other_test_model = models.ForeignKey(OtherTestModel, on_delete=SET_NULL, null=True)
+    test_model = models.ForeignKey(TestModel, on_delete=SET_NULL, null=True)
 
 
 class TestModelWithCustomTableName(models.Model):

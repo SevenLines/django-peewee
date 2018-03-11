@@ -90,7 +90,15 @@ DATABASES = {
         'PASSWORD': '12345',
         'HOST': 'localhost',
         'PORT': '5432',
-    }
+    },
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.mysql',
+    #     'NAME': 'django-peewee',
+    #     'USER': 'root',
+    #     'PASSWORD': '12345',
+    #     'HOST': 'localhost',
+    #     'PORT': '3306',
+    # }
 }
 
 

@@ -1,22 +1,15 @@
+import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
 from django.contrib.auth.models import User, Permission
 from django.test import TestCase
 
-# Create your tests here.
-from test_django_peewee.models import TestModel, TestModelWithCustomTableName, OtherTestModel
+from test_django_peewee.models import TestModel, TestModelWithCustomTableName, OtherTestModel, TestThroughModel
 
 
-class TestModelBase(TestCase):
-    # def get_all_subclassess(self, cls):
-    #     out = []
-    #     for subclass in cls.__subclasses__():
-    #         out.append(subclass)
-    #         out.extend(self.get_all_subclassess(subclass))
-    #     return out
-
-    def test_list_class(self):
+class TestPeeWeeModels(TestCase):
+    def test_all_fields(self):
         other = OtherTestModel.objects.create(text="OtherTestModel")
 
         data = dict(
@@ -44,6 +37,7 @@ class TestModelBase(TestCase):
             text_field_with_custom_column='text_field_with_custom_column_value',
             time_field=time(1, 1, 50),
             urlfield='',
+            uuidfield=uuid.uuid4(),
         )
 
         model = TestModel.objects.create(**data)
@@ -64,27 +58,46 @@ class TestModelBase(TestCase):
         user.user_permissions.add(*Permission.objects.all())
 
         user_pw = User.pw[user.id]
-        for permission in user_pw.user_permissions.where(Permission.pw.name.contains('add')):
+        for permission in user_pw.user_permissions.where(Permission.pw.name.contains('add')).offset(2).limit(5):
             self.assertIn('add', permission.name)
             self.assertEqual(permission.users.first().email, user.email)
             self.assertEqual(1, permission.users.count())
             self.assertTrue(permission.users.exists())
+
+    def test_through_model(self):
+        test_model = TestModel.objects.create()
+        other_test_model = OtherTestModel.objects.create(
+            text="test_text"
+        )
+
+        TestThroughModel.objects.create(
+            value="test_value",
+            test_model=test_model,
+            other_test_model=other_test_model
+        )
+
+        tt = TestThroughModel.objects.first()
+
+        through_info = TestModel.pw[test_model.id].others_models.first()
+        self.assertEqual("test_text", through_info.text)
+        self.assertEqual(1, TestModel.pw[test_model.id].others_models.count())
 
     def test_custom_table_name(self):
         TestModelWithCustomTableName.objects.create(
             text='hello'
         )
 
-        TestModelWithCustomTableName.objects.create(
-            text='hello2'
-        )
-        data = list(TestModelWithCustomTableName.pw.select().execute())[0]
+        data = TestModelWithCustomTableName.pw.select().first()
         self.assertEqual('hello', data.text)
 
         TestModelWithCustomTableName.objects.create(
             text='hello2'
         )
-        data = list(TestModelWithCustomTableName.pw.select()
-                    .order_by(TestModelWithCustomTableName.pw.id.desc()).execute())[0]
 
-        self.assertEqual('hello2', data.text)
+        data = TestModelWithCustomTableName.pw \
+            .select(TestModelWithCustomTableName.pw.text) \
+            .order_by(TestModelWithCustomTableName.pw.id.desc())\
+            .execute()
+
+        self.assertEqual([i.text for i in data], ['hello2', 'hello'])
+        self.assertEqual(2, TestModelWithCustomTableName.pw.select().count())

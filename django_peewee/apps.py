@@ -3,7 +3,7 @@ import peewee
 from django.apps import AppConfig
 from django.db import connections
 from django.db.models import DecimalField
-from peewee import SqliteDatabase, PostgresqlDatabase, DeferredForeignKey, ManyToManyField
+from peewee import SqliteDatabase, PostgresqlDatabase, DeferredForeignKey, ManyToManyField, MySQLDatabase
 
 DATA_TYPES = {
     'AutoField': peewee.AutoField,
@@ -43,6 +43,7 @@ DATA_TYPES = {
 DATABASE_DRIVERS = {
     'sqlite': SqliteDatabase,
     'postgresql': PostgresqlDatabase,
+    'mysql': MySQLDatabase,
 }
 
 
