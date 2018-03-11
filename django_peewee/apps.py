@@ -1,11 +1,9 @@
-from typing import Any
-
-from django.apps import AppConfig
 import django.apps
 import peewee
-from django.db.models import DecimalField
-from peewee import SqliteDatabase, PostgresqlDatabase, DeferredForeignKey, ManyToManyField, ManyToManyQuery
+from django.apps import AppConfig
 from django.db import connections
+from django.db.models import DecimalField
+from peewee import SqliteDatabase, PostgresqlDatabase, DeferredForeignKey, ManyToManyField
 
 DATA_TYPES = {
     'AutoField': peewee.AutoField,
@@ -18,12 +16,12 @@ DATA_TYPES = {
     'DateField': peewee.DateField,
     'DateTimeField': peewee.DateTimeField,
     'DecimalField': lambda *args, **kwargs: peewee.DecimalField(*args, **kwargs),
-    # 'DurationField': '',
+    # 'DurationField': '',  # todo implement DurationField
     'EmailField': peewee.CharField,
     'FileField': peewee.CharField,
     'FilePathField': peewee.CharField,
     'FloatField': peewee.FloatField,
-    'ForeignKey': peewee.DeferredForeignKey,  # для избежания циклических зависимостей
+    'ForeignKey': peewee.DeferredForeignKey,
     'GenericIPAddressField': peewee.CharField,
     'IPAddressField': peewee.IPField,
     'ImageField': peewee.CharField,
@@ -72,21 +70,36 @@ class ProxyModel(peewee.Model):
 class DjangoPeeweeConfig(AppConfig):
     name = 'django_peewee'
 
+    # cache for peewee models
     PEEWEE_MODELS_CACHE = {}
 
+    # methods which required database connection patch
+    PATCHED_METHODS = {
+        (peewee.BaseQuery, 'execute'): peewee.BaseQuery.execute,
+        (peewee.SelectBase, 'peek'): peewee.Select.peek,
+        (peewee.SelectBase, 'first'): peewee.Select.first,
+        (peewee.SelectBase, 'scalar'): peewee.Select.scalar,
+        (peewee.SelectBase, 'count'): peewee.Select.count,
+        (peewee.SelectBase, 'exists'): peewee.Select.exists,
+        (peewee.SelectBase, 'get'): peewee.Select.get,
+    }
+
     def get_klass_name(self, model):
-        return "Peewee{}".format(model._meta.object_name)
+        """ Returns klass name of peewee model"""
+        return "{}".format(model._meta.object_name)
 
     def get_many_to_many_model(self, many_to_many_descriptor):
+        """ Creates model for many_to_many relation"""
         model = many_to_many_descriptor.through
-        class_inner = self.get_peewee_class_inner(model, use_deffered=False)
+        class_inner = self.get_peewee_class_inner(model, use_deferred=False)
         return type(
             self.get_klass_name(model),
             (ProxyModel,),
             class_inner
         )
 
-    def get_peewee_class_inner(self, model, use_deffered=True):
+    def get_peewee_class_inner(self, model, use_deferred=True):
+        """ Build class inner for peewee model"""
         class_inner = {}
 
         for field in model._meta.fields:
@@ -97,7 +110,7 @@ class DjangoPeeweeConfig(AppConfig):
                     "column_name": field.column
                 }
                 if field.related_model:
-                    if use_deffered:
+                    if use_deferred:
                         args.append(self.get_klass_name(field.related_model))
                     else:
                         args.append(self.PEEWEE_MODELS_CACHE[field.related_model])
@@ -114,14 +127,19 @@ class DjangoPeeweeConfig(AppConfig):
 
         return class_inner
 
-    def patch_peewee_base_query(self):
-        self.original_execute = peewee.BaseQuery.execute
+    def get_patched_function(self, klass, method):
+        def patched_function(query, database=None, *args, **kwargs):
+            if not database or isinstance(database, str):
+                database = DatabaseProxy(database or 'default')
+            return self.PATCHED_METHODS[(klass, method)](query, database)
 
-        def patched_execute(query, database=None, *args, **kwargs):
-            database = database or 'default'
-            return self.original_execute(query, DatabaseProxy(database))
+        return patched_function
 
-        peewee.BaseQuery.execute = patched_execute
+    def patch_database_required_functions(self):
+        """ Replace BaseQuery execute method, provide database"""
+        for klass, method in self.PATCHED_METHODS.keys():
+            patched_function = self.get_patched_function(klass, method)
+            setattr(klass, method, patched_function)
 
     def ready(self):
         models = [model for model in django.apps.apps.get_models() if not model._meta.proxy]
@@ -150,4 +168,4 @@ class DjangoPeeweeConfig(AppConfig):
                     through_model=through_model
                 ))
 
-        self.patch_peewee_base_query()
+        self.patch_database_required_functions()

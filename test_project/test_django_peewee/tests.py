@@ -3,7 +3,6 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User, Permission
 from django.test import TestCase
-import django.db.models.fields
 
 # Create your tests here.
 from test_django_peewee.models import TestModel, TestModelWithCustomTableName, OtherTestModel
@@ -47,9 +46,9 @@ class TestModelBase(TestCase):
             urlfield='',
         )
 
-        TestModel.objects.create(**data)
+        model = TestModel.objects.create(**data)
 
-        item = list(TestModel.pw.select().execute())[0]
+        item = TestModel.pw[model.id]
         for key, value in data.items():
             if key == 'date_time_field':
                 date_format = "{:%Y-%m-%d %H:%M:%S}"
@@ -60,14 +59,16 @@ class TestModelBase(TestCase):
             else:
                 self.assertEqual(value, getattr(item, key), "wrong {}".format(key))
 
-    def test_permissions(self):
+    def test_many_to_many_permissions(self):
         user = User.objects.create_user("m", "email@email.ru", "123")
         user.user_permissions.add(*Permission.objects.all())
 
-        user_pw = User.pw.select().execute()[0]
-        for permission in user_pw.user_permissions.execute():
-            print(permission.name)
-        print(user_pw)
+        user_pw = User.pw[user.id]
+        for permission in user_pw.user_permissions.where(Permission.pw.name.contains('add')):
+            self.assertIn('add', permission.name)
+            self.assertEqual(permission.users.first().email, user.email)
+            self.assertEqual(1, permission.users.count())
+            self.assertTrue(permission.users.exists())
 
     def test_custom_table_name(self):
         TestModelWithCustomTableName.objects.create(

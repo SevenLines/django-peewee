@@ -79,18 +79,18 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'base.db'),
-    },
     # 'default': {
-    #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': 'django-peewee',
-    #     'USER': 'm',
-    #     'PASSWORD': '12345',
-    #     'HOST': 'localhost',
-    #     'PORT': '5432',
-    # }
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': os.path.join(BASE_DIR, 'base.db'),
+    # },
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'django-peewee',
+        'USER': 'm',
+        'PASSWORD': '12345',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
 }
 
 
